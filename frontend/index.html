@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridRunner</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script defer src="/js/alpine.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/app.js"></script>
+</head>
+<body x-data x-init="$store.app.init()">
+    <!-- Loading State -->
+    <template x-if="$store.app.loading">
+        <div class="login-container">
+            <div class="spinner" style="width: 40px; height: 40px;"></div>
+        </div>
+    </template>
+
+    <!-- Login / Setup -->
+    <template x-if="!$store.app.loading && !$store.app.authenticated">
+        <div class="login-container" x-data="auth">
+            <div class="login-box card">
+                <h1>GridRunner</h1>
+                <p x-show="$store.app.needsSetup">Set up your admin password</p>
+                <p x-show="!$store.app.needsSetup">Enter your password to continue</p>
+
+                <form @submit.prevent="$store.app.needsSetup ? setup() : login()">
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" x-model="password" required minlength="6" autofocus>
+                    </div>
+
+                    <template x-if="$store.app.needsSetup">
+                        <div class="form-group">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" class="form-input" x-model="confirmPassword" required minlength="6">
+                        </div>
+                    </template>
+
+                    <div x-show="error" class="text-error mb-4" x-text="error"></div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;" :disabled="loading">
+                        <span x-show="!loading" x-text="$store.app.needsSetup ? 'Create Password' : 'Login'"></span>
+                        <span x-show="loading" class="spinner"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <!-- Main App -->
+    <template x-if="!$store.app.loading && $store.app.authenticated">
+        <div class="app-container">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h1>GridRunner</h1>
+                    <p>Automate your scripts</p>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <a class="nav-item" :class="{ 'active': $store.app.currentPage === 'dashboard' }"
+                       @click="$store.app.navigate('dashboard')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Dashboard
+                    </a>
+                    <a class="nav-item" :class="{ 'active': $store.app.currentPage === 'scripts' }"
+                       @click="$store.app.navigate('scripts')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                        Scripts
+                    </a>
+                    <a class="nav-item" :class="{ 'active': $store.app.currentPage === 'history' }"
+                       @click="$store.app.navigate('history')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        History
+                    </a>
+                    <a class="nav-item" :class="{ 'active': $store.app.currentPage === 'settings' }"
+                       @click="$store.app.navigate('settings')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Settings
+                    </a>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <a class="nav-item" @click="$store.app.toggleDarkMode()">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        <span x-text="$store.app.darkMode ? 'Light Mode' : 'Dark Mode'"></span>
+                    </a>
+                    <template x-if="$store.app.authEnabled">
+                        <a class="nav-item" @click="$store.app.logout()">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Logout
+                        </a>
+                    </template>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Dashboard Page -->
+                <div x-show="$store.app.currentPage === 'dashboard'" x-data="dashboard">
+                    <div class="page-header">
+                        <h2>Dashboard</h2>
+                        <p>Overview of your scripts and recent activity</p>
+                    </div>
+
+                    <template x-if="loading">
+                        <div class="text-center mt-4"><div class="spinner" style="margin: 0 auto;"></div></div>
+                    </template>
+
+                    <template x-if="!loading && stats">
+                        <div>
+                            <!-- Stats Grid -->
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-value" x-text="stats.total_scripts"></div>
+                                    <div class="stat-label">Total Scripts</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" x-text="stats.active_schedules"></div>
+                                    <div class="stat-label">Active Schedules</div>
+                                </div>
+                                <div class="stat-card" :class="{ 'success': stats.running_now > 0 }">
+                                    <div class="stat-value" x-text="stats.running_now"></div>
+                                    <div class="stat-label">Running Now</div>
+                                </div>
+                                <div class="stat-card success">
+                                    <div class="stat-value" x-text="stats.successful_today"></div>
+                                    <div class="stat-label">Successful Today</div>
+                                </div>
+                                <div class="stat-card" :class="{ 'error': stats.failed_today > 0 }">
+                                    <div class="stat-value" x-text="stats.failed_today"></div>
+                                    <div class="stat-label">Failed Today</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" x-text="stats.success_rate_today + '%'"></div>
+                                    <div class="stat-label">Success Rate Today</div>
+                                </div>
+                            </div>
+
+                            <div class="grid-2">
+                                <!-- Running Scripts -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Currently Running</h3>
+                                    </div>
+                                    <template x-if="running.length === 0">
+                                        <div class="empty-state">
+                                            <p>No scripts running</p>
+                                        </div>
+                                    </template>
+                                    <template x-if="running.length > 0">
+                                        <div>
+                                            <template x-for="run in running" :key="run.run_id">
+                                                <div class="flex items-center justify-between" style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                                    <div>
+                                                        <div x-text="run.script_name"></div>
+                                                        <div class="text-muted" x-text="formatDuration(run.duration_so_far)"></div>
+                                                    </div>
+                                                    <span class="badge badge-info">
+                                                        <span class="spinner" style="width: 12px; height: 12px;"></span>
+                                                        Running
+                                                    </span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- Upcoming Runs -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Upcoming Runs</h3>
+                                    </div>
+                                    <template x-if="upcoming.length === 0">
+                                        <div class="empty-state">
+                                            <p>No upcoming scheduled runs</p>
+                                        </div>
+                                    </template>
+                                    <template x-if="upcoming.length > 0">
+                                        <div>
+                                            <template x-for="run in upcoming" :key="run.schedule_id">
+                                                <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                                    <div x-text="run.script_name"></div>
+                                                    <div class="text-muted" x-text="formatDate(run.next_run)"></div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Recent Runs -->
+                            <div class="card mt-4">
+                                <div class="card-header">
+                                    <h3 class="card-title">Recent Runs</h3>
+                                </div>
+                                <div class="table-container">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Script</th>
+                                                <th>Status</th>
+                                                <th>Started</th>
+                                                <th>Duration</th>
+                                                <th>Trigger</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="run in recent" :key="run.id">
+                                                <tr>
+                                                    <td x-text="run.script_name"></td>
+                                                    <td>
+                                                        <span class="badge" :class="getStatusBadgeClass(run.status)" x-text="run.status"></span>
+                                                    </td>
+                                                    <td x-text="formatDate(run.started_at)"></td>
+                                                    <td x-text="formatDuration(run.duration)"></td>
+                                                    <td>
+                                                        <span class="badge badge-neutral" x-text="run.trigger_type"></span>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Recent Failures -->
+                            <template x-if="failures.length > 0">
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h3 class="card-title text-error">Recent Failures (24h)</h3>
+                                    </div>
+                                    <div class="table-container">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Script</th>
+                                                    <th>Failures</th>
+                                                    <th>Health Score</th>
+                                                    <th>Last Failure</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template x-for="fail in failures" :key="fail.script_id">
+                                                    <tr>
+                                                        <td x-text="fail.script_name"></td>
+                                                        <td><span class="badge badge-error" x-text="fail.failure_count"></span></td>
+                                                        <td x-text="fail.health_score.toFixed(0) + '%'"></td>
+                                                        <td x-text="formatDate(fail.last_failure)"></td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Scripts Page -->
+                <div x-show="$store.app.currentPage === 'scripts'" x-data="scripts">
+                    <div class="page-header">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2>Scripts</h2>
+                                <p>Manage your scripts and schedules</p>
+                            </div>
+                            <button class="btn btn-primary" @click="openCreateModal()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Script
+                            </button>
+                        </div>
+                    </div>
+
+                    <template x-if="loading">
+                        <div class="text-center mt-4"><div class="spinner" style="margin: 0 auto;"></div></div>
+                    </template>
+
+                    <template x-if="!loading && scripts.length === 0">
+                        <div class="card">
+                            <div class="empty-state">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                </svg>
+                                <h3>No scripts yet</h3>
+                                <p>Add your first script to get started</p>
+                                <button class="btn btn-primary mt-4" @click="openCreateModal()">Add Script</button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="!loading && scripts.length > 0">
+                        <div class="card">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Health</th>
+                                            <th>Last Run</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="script in scripts" :key="script.id">
+                                            <tr>
+                                                <td>
+                                                    <div>
+                                                        <div class="font-mono" x-text="script.name"></div>
+                                                        <div class="text-muted" style="font-size: 0.75rem;" x-text="script.path"></div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div>
+                                                        <span class="badge badge-neutral" x-text="getScriptTypeInfo(script.script_type).icon + ' ' + getScriptTypeInfo(script.script_type).label"></span>
+                                                        <div x-show="script.interpreter_version" class="text-muted" style="font-size: 0.7rem; margin-top: 2px;" x-text="script.interpreter_version"></div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <template x-if="script.is_running">
+                                                        <span class="badge badge-info">
+                                                            <span class="spinner" style="width: 12px; height: 12px;"></span>
+                                                            Running
+                                                        </span>
+                                                    </template>
+                                                    <template x-if="!script.is_running && script.last_run_status">
+                                                        <span class="badge" :class="{
+                                                            'badge-success': script.last_run_status === 'success',
+                                                            'badge-error': script.last_run_status === 'failed',
+                                                            'badge-warning': ['timeout', 'killed'].includes(script.last_run_status)
+                                                        }" x-text="script.last_run_status"></span>
+                                                    </template>
+                                                    <template x-if="!script.is_running && !script.last_run_status">
+                                                        <span class="badge badge-neutral">Never run</span>
+                                                    </template>
+                                                </td>
+                                                <td>
+                                                    <div class="health-score">
+                                                        <div class="health-bar">
+                                                            <div class="health-bar-fill" :class="getHealthClass(script.health_score)"
+                                                                 :style="'width: ' + script.health_score + '%'"></div>
+                                                        </div>
+                                                        <span x-text="script.health_score.toFixed(0) + '%'"></span>
+                                                    </div>
+                                                </td>
+                                                <td x-text="script.last_run_at ? new Date(script.last_run_at).toLocaleString() : '-'"></td>
+                                                <td>
+                                                    <div class="flex gap-2">
+                                                        <button class="btn btn-sm btn-success" @click="runScript(script)" :disabled="script.is_running">Run</button>
+                                                        <button class="btn btn-sm btn-secondary" @click="expandedScript = (expandedScript === script.id ? null : script.id)">
+                                                            Details
+                                                        </button>
+                                                        <button class="btn btn-sm btn-secondary" @click="openEditModal(script)">Edit</button>
+                                                        <button class="btn btn-sm btn-danger" @click="deleteScript(script)">Delete</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <!-- Expanded details row -->
+                                            <tr x-show="expandedScript === script.id">
+                                                <td colspan="6" style="background: var(--bg-tertiary);">
+                                                    <div style="padding: 16px;">
+                                                        <div class="grid-2" style="gap: 24px;">
+                                                            <div>
+                                                                <h4 style="margin-bottom: 12px;">Script Details</h4>
+                                                                    <div style="font-size: 0.875rem;">
+                                                                        <p><strong>Type:</strong> <span x-text="getScriptTypeInfo(script.script_type).icon + ' ' + getScriptTypeInfo(script.script_type).label"></span></p>
+                                                                        <p x-show="script.interpreter_version"><strong>Interpreter:</strong> <span x-text="script.interpreter_version"></span></p>
+                                                                        <p x-show="script.interpreter_path"><strong>Custom Interpreter:</strong> <span x-text="script.interpreter_path"></span></p>
+                                                                        <p x-show="script.venv_path"><strong>Virtual Environment:</strong> <span x-text="script.venv_path"></span></p>
+                                                                        <p><strong>Working Dir:</strong> <span x-text="script.working_directory || 'Script directory'"></span></p>
+                                                                        <p><strong>Timeout:</strong> <span x-text="script.timeout + 's'"></span></p>
+                                                                        <p><strong>Retries:</strong> <span x-text="script.retry_count"></span></p>
+                                                                        <p class="mt-2" x-show="script.description" x-text="script.description"></p>
+                                                                    </div>
+                                                                    <!-- Packages section for Python venvs -->
+                                                                    <template x-if="script.venv_path && script.script_type === 'python'">
+                                                                        <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                                                                            <div class="flex items-center justify-between mb-2">
+                                                                                <h4>Packages</h4>
+                                                                                <button class="btn btn-sm btn-secondary" @click="loadPackages(script.venv_path)">
+                                                                                    <span x-show="!loadingPackages">Load Packages</span>
+                                                                                    <span x-show="loadingPackages" class="spinner" style="width: 12px; height: 12px;"></span>
+                                                                                </button>
+                                                                            </div>
+                                                                            <template x-if="packages.length > 0">
+                                                                                <div>
+                                                                                    <div class="flex gap-2 mb-2">
+                                                                                        <input type="text" class="form-input" x-model="newPackage" placeholder="Package name" style="flex: 1; font-size: 0.8rem; padding: 4px 8px;" @keydown.enter="installPackage(script.venv_path)">
+                                                                                        <button class="btn btn-sm btn-primary" @click="installPackage(script.venv_path)">Install</button>
+                                                                                    </div>
+                                                                                    <div style="max-height: 200px; overflow-y: auto;">
+                                                                                        <table style="font-size: 0.8rem;">
+                                                                                            <thead><tr><th>Package</th><th>Version</th><th></th></tr></thead>
+                                                                                            <tbody>
+                                                                                                <template x-for="pkg in packages" :key="pkg.name">
+                                                                                                    <tr>
+                                                                                                        <td x-text="pkg.name"></td>
+                                                                                                        <td x-text="pkg.version"></td>
+                                                                                                        <td><button class="btn btn-sm btn-danger" style="padding: 1px 6px; font-size: 0.7rem;" @click="uninstallPackage(script.venv_path, pkg.name)">X</button></td>
+                                                                                                    </tr>
+                                                                                                </template>
+                                                                                            </tbody>
+                                                                                        </table>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </template>
+                                                                        </div>
+                                                                    </template>
+                                                                </div>
+                                                                <div>
+                                                                    <div class="flex items-center justify-between mb-2">
+                                                                        <h4>Schedules</h4>
+                                                                        <button class="btn btn-sm btn-primary" @click="openScheduleModal(script)">Add Schedule</button>
+                                                                    </div>
+                                                                    <template x-if="scriptSchedules[script.id] && scriptSchedules[script.id].length > 0">
+                                                                        <div>
+                                                                            <template x-for="sch in scriptSchedules[script.id]" :key="sch.id">
+                                                                                <div class="flex items-center justify-between" style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                                                                    <div>
+                                                                                        <div x-text="sch.human_readable"></div>
+                                                                                        <div class="text-muted" x-show="sch.next_run" x-text="'Next: ' + new Date(sch.next_run).toLocaleString()"></div>
+                                                                                    </div>
+                                                                                    <div class="flex gap-2 items-center">
+                                                                                        <label class="toggle">
+                                                                                            <input type="checkbox" :checked="sch.enabled" @change="toggleSchedule(sch)">
+                                                                                            <span class="toggle-slider"></span>
+                                                                                        </label>
+                                                                                        <button class="btn btn-sm btn-danger" @click="deleteSchedule(sch)">Delete</button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </template>
+                                                                        </div>
+                                                                    </template>
+                                                                    <template x-if="!scriptSchedules[script.id] || scriptSchedules[script.id].length === 0">
+                                                                        <p class="text-muted">No schedules configured</p>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Script Modal -->
+                    <template x-if="showModal">
+                        <div class="modal-overlay" @click.self="showModal = false">
+                            <div class="modal">
+                                <div class="modal-header">
+                                    <h3 class="modal-title" x-text="editingScript ? 'Edit Script' : 'Add Script'"></h3>
+                                    <button class="modal-close" @click="showModal = false">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label class="form-label">Name *</label>
+                                        <input type="text" class="form-input" x-model="form.name" required>
+                                    </div>
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Script Type *</label>
+                                            <select class="form-select" x-model="form.script_type" @change="onScriptTypeChange()">
+                                                <template x-for="type in scriptTypes" :key="type.value">
+                                                    <option :value="type.value" x-text="type.icon + ' ' + type.label"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Script Path *</label>
+                                            <input type="text" class="form-input" x-model="form.path" placeholder="/path/to/script" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Description</label>
+                                        <textarea class="form-textarea" x-model="form.description" rows="2"></textarea>
+                                    </div>
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Interpreter</label>
+                                            <template x-if="getRuntimesForType(form.script_type).length > 0">
+                                                <div>
+                                                    <select class="form-select" x-model="form.interpreter_path">
+                                                        <option value="">System default</option>
+                                                        <template x-for="rt in getRuntimesForType(form.script_type)" :key="rt.path">
+                                                            <option :value="rt.path" x-text="rt.display_name + ' — ' + rt.path + (rt.is_default ? ' (default)' : '')"></option>
+                                                        </template>
+                                                    </select>
+                                                    <p class="form-help">Discovered interpreters on this system</p>
+                                                </div>
+                                            </template>
+                                            <template x-if="getRuntimesForType(form.script_type).length === 0">
+                                                <div>
+                                                    <input type="text" class="form-input" x-model="form.interpreter_path" placeholder="Leave empty to use default">
+                                                    <p class="form-help">Override the default interpreter</p>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Working Directory</label>
+                                            <input type="text" class="form-input" x-model="form.working_directory">
+                                            <p class="form-help">Leave empty for script's directory</p>
+                                        </div>
+                                    </div>
+                                    <!-- Python Virtual Environment -->
+                                    <template x-if="form.script_type === 'python'">
+                                        <div class="form-group" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                                            <label class="form-label">Virtual Environment</label>
+                                            <div class="flex gap-2">
+                                                <input type="text" class="form-input" x-model="form.venv_path" placeholder="/path/to/venv" style="flex: 1;">
+                                                <button type="button" class="btn btn-sm btn-secondary" @click="detectVenvs()">Detect</button>
+                                                <button type="button" class="btn btn-sm btn-secondary" @click="showCreateVenv = !showCreateVenv">Create</button>
+                                            </div>
+                                            <!-- Detected venvs -->
+                                            <template x-if="detectedVenvs.length > 0">
+                                                <div class="flex gap-2" style="margin-top: 8px; flex-wrap: wrap;">
+                                                    <template x-for="v in detectedVenvs" :key="v.path">
+                                                        <button type="button" class="btn btn-sm" :class="form.venv_path === v.path ? 'btn-primary' : 'btn-secondary'" @click="selectVenv(v)" x-text="v.name + (v.python_version ? ' (' + v.python_version + ')' : '')"></button>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                            <!-- Create venv inline form -->
+                                            <template x-if="showCreateVenv">
+                                                <div style="margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 6px;">
+                                                    <div class="form-group" style="margin-bottom: 8px;">
+                                                        <label class="form-label" style="font-size: 0.8rem;">New Environment Path</label>
+                                                        <input type="text" class="form-input" x-model="newVenvPath" placeholder="/path/to/new/venv">
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-primary" @click="createVenv()">Create Environment</button>
+                                                </div>
+                                            </template>
+                                            <p x-show="form.venv_path" class="form-help" style="color: var(--success-color); margin-top: 6px;">Script will execute inside this virtual environment</p>
+                                        </div>
+                                    </template>
+                                    <!-- Node.js project directory -->
+                                    <template x-if="form.script_type === 'node' || form.script_type === 'deno'">
+                                        <div class="form-group">
+                                            <label class="form-label">Project Directory (Optional)</label>
+                                            <input type="text" class="form-input" x-model="form.venv_path" placeholder="/path/to/project">
+                                            <p class="form-help">Sets NODE_PATH to its node_modules</p>
+                                        </div>
+                                    </template>
+                                    <div class="form-group">
+                                        <label class="form-label">Arguments</label>
+                                        <input type="text" class="form-input" x-model="form.args" placeholder="--arg1 value1 --arg2 value2">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Environment Variables (JSON)</label>
+                                        <textarea class="form-textarea font-mono" x-model="form.env_vars" rows="2" placeholder='{"KEY": "value"}'></textarea>
+                                    </div>
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Timeout (seconds)</label>
+                                            <input type="number" class="form-input" x-model.number="form.timeout" min="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Category</label>
+                                            <select class="form-select" x-model="form.category_id">
+                                                <option value="">None</option>
+                                                <template x-for="cat in categories" :key="cat.id">
+                                                    <option :value="cat.id" x-text="cat.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="grid-2">
+                                        <div class="form-group">
+                                            <label class="form-label">Retry Count</label>
+                                            <input type="number" class="form-input" x-model.number="form.retry_count" min="0" max="10">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Retry Delay (seconds)</label>
+                                            <input type="number" class="form-input" x-model.number="form.retry_delay" min="1">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Email Notifications</label>
+                                        <select class="form-select" x-model="form.notification_setting">
+                                            <option value="never">Never</option>
+                                            <option value="on_failure">On Failure Only</option>
+                                            <option value="always">Always</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Webhook URL</label>
+                                        <input type="url" class="form-input" x-model="form.webhook_url" placeholder="https://...">
+                                        <p class="form-help">POST request sent on completion</p>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" @click="showModal = false">Cancel</button>
+                                    <button class="btn btn-primary" @click="saveScript()">
+                                        <span x-text="editingScript ? 'Update' : 'Create'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Schedule Modal -->
+                    <template x-if="showScheduleModal">
+                        <div class="modal-overlay" @click.self="showScheduleModal = false">
+                            <div class="modal">
+                                <div class="modal-header">
+                                    <h3 class="modal-title">Add Schedule</h3>
+                                    <button class="modal-close" @click="showScheduleModal = false">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label class="form-label">Schedule Type</label>
+                                        <select class="form-select" x-model="scheduleForm.schedule_type">
+                                            <option value="interval">Interval</option>
+                                            <option value="specific_time">Specific Time</option>
+                                            <option value="cron">Cron Expression</option>
+                                        </select>
+                                    </div>
+
+                                    <template x-if="scheduleForm.schedule_type === 'interval'">
+                                        <div class="grid-2">
+                                            <div class="form-group">
+                                                <label class="form-label">Every</label>
+                                                <input type="number" class="form-input" x-model.number="scheduleForm.interval_value" min="1">
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="form-label">Unit</label>
+                                                <select class="form-select" x-model="scheduleForm.interval_unit">
+                                                    <option value="minutes">Minutes</option>
+                                                    <option value="hours">Hours</option>
+                                                    <option value="days">Days</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="scheduleForm.schedule_type === 'specific_time'">
+                                        <div>
+                                            <div class="form-group">
+                                                <label class="form-label">Time</label>
+                                                <input type="time" class="form-input" x-model="scheduleForm.specific_time">
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="form-label">Days (leave empty for daily)</label>
+                                                <div class="flex gap-2" style="flex-wrap: wrap;">
+                                                    <template x-for="(day, idx) in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="idx">
+                                                        <label class="flex items-center gap-2">
+                                                            <input type="checkbox" :value="idx"
+                                                                   :checked="scheduleForm.days_of_week.includes(idx)"
+                                                                   @change="
+                                                                       if ($event.target.checked) {
+                                                                           scheduleForm.days_of_week.push(idx);
+                                                                       } else {
+                                                                           scheduleForm.days_of_week = scheduleForm.days_of_week.filter(d => d !== idx);
+                                                                       }
+                                                                   ">
+                                                            <span x-text="day"></span>
+                                                        </label>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="scheduleForm.schedule_type === 'cron'">
+                                        <div class="form-group">
+                                            <label class="form-label">Cron Expression</label>
+                                            <input type="text" class="form-input font-mono" x-model="scheduleForm.cron_expression" placeholder="0 2 * * *">
+                                            <p class="form-help">Format: minute hour day month day_of_week</p>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" @click="showScheduleModal = false">Cancel</button>
+                                    <button class="btn btn-primary" @click="saveSchedule()">Create Schedule</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- History Page -->
+                <div x-show="$store.app.currentPage === 'history'" x-data="history">
+                    <div class="page-header">
+                        <h2>Run History</h2>
+                        <p>View past script executions and logs</p>
+                    </div>
+
+                    <div class="action-bar">
+                        <div class="action-bar-left">
+                            <select class="form-select" x-model="filter.status" @change="applyFilter()" style="width: auto;">
+                                <option value="">All Statuses</option>
+                                <option value="success">Success</option>
+                                <option value="failed">Failed</option>
+                                <option value="timeout">Timeout</option>
+                                <option value="killed">Killed</option>
+                                <option value="running">Running</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <template x-if="loading">
+                        <div class="text-center mt-4"><div class="spinner" style="margin: 0 auto;"></div></div>
+                    </template>
+
+                    <template x-if="!loading">
+                        <div class="card">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Script</th>
+                                            <th>Status</th>
+                                            <th>Started</th>
+                                            <th>Duration</th>
+                                            <th>Trigger</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="run in runs" :key="run.id">
+                                            <tr>
+                                                <td x-text="run.script_name"></td>
+                                                <td>
+                                                    <span class="badge" :class="getStatusBadgeClass(run.status)" x-text="run.status"></span>
+                                                </td>
+                                                <td x-text="formatDate(run.started_at)"></td>
+                                                <td x-text="formatDuration(run.duration)"></td>
+                                                <td>
+                                                    <span class="badge badge-neutral" x-text="run.trigger_type"></span>
+                                                </td>
+                                                <td>
+                                                    <div class="flex gap-2">
+                                                        <button class="btn btn-sm btn-secondary" @click="viewRun(run)">View Logs</button>
+                                                        <button class="btn btn-sm btn-danger" @click="deleteRun(run)">Delete</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Run Detail Modal -->
+                    <template x-if="selectedRun">
+                        <div class="modal-overlay" @click.self="closeRunModal()">
+                            <div class="modal" style="max-width: 800px;">
+                                <div class="modal-header">
+                                    <h3 class="modal-title">Run Details - <span x-text="selectedRun.script_name"></span></h3>
+                                    <button class="modal-close" @click="closeRunModal()">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="grid-2 mb-4">
+                                        <div>
+                                            <p><strong>Status:</strong> <span class="badge" :class="getStatusBadgeClass(selectedRun.status)" x-text="selectedRun.status"></span></p>
+                                            <p><strong>Started:</strong> <span x-text="formatDate(selectedRun.started_at)"></span></p>
+                                            <p><strong>Ended:</strong> <span x-text="selectedRun.ended_at ? formatDate(selectedRun.ended_at) : 'Running...'"></span></p>
+                                        </div>
+                                        <div>
+                                            <p><strong>Duration:</strong> <span x-text="formatDuration(selectedRun.duration)"></span></p>
+                                            <p><strong>Exit Code:</strong> <span x-text="selectedRun.exit_code ?? 'N/A'"></span></p>
+                                            <p><strong>Trigger:</strong> <span x-text="selectedRun.trigger_type"></span></p>
+                                        </div>
+                                    </div>
+
+                                    <h4 class="mb-2">Standard Output</h4>
+                                    <pre class="log-output stdout" x-text="selectedRun.stdout || '(no output)'"></pre>
+
+                                    <h4 class="mb-2 mt-4">Standard Error</h4>
+                                    <pre class="log-output stderr" x-text="selectedRun.stderr || '(no errors)'"></pre>
+                                </div>
+                                <div class="modal-footer">
+                                    <a :href="'/api/runs/' + selectedRun.id + '/download'" class="btn btn-secondary" download>Download Log</a>
+                                    <button class="btn btn-primary" @click="closeRunModal()">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Settings Page -->
+                <div x-show="$store.app.currentPage === 'settings'" x-data="settings">
+                    <div class="page-header">
+                        <h2>Settings</h2>
+                        <p>Configure application settings</p>
+                    </div>
+
+                    <template x-if="loading">
+                        <div class="text-center mt-4"><div class="spinner" style="margin: 0 auto;"></div></div>
+                    </template>
+
+                    <template x-if="!loading && settings">
+                        <div>
+                            <div class="tabs">
+                                <div class="tab" :class="{ 'active': activeTab === 'smtp' }" @click="activeTab = 'smtp'">Email (SMTP)</div>
+                                <div class="tab" :class="{ 'active': activeTab === 'digest' }" @click="activeTab = 'digest'">Daily Digest</div>
+                                <div class="tab" :class="{ 'active': activeTab === 'retention' }" @click="activeTab = 'retention'">Retention</div>
+                                <div class="tab" :class="{ 'active': activeTab === 'backup' }" @click="activeTab = 'backup'">Backup & Import</div>
+                                <template x-if="$store.app.authEnabled">
+                                    <div class="tab" :class="{ 'active': activeTab === 'security' }" @click="activeTab = 'security'">Security</div>
+                                </template>
+                            </div>
+
+                            <!-- SMTP Settings -->
+                            <div x-show="activeTab === 'smtp'" class="card">
+                                <h3 class="card-title mb-4">SMTP Configuration</h3>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label">SMTP Host</label>
+                                        <input type="text" class="form-input" x-model="settings.smtp.smtp_host" placeholder="smtp.gmail.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">SMTP Port</label>
+                                        <input type="number" class="form-input" x-model.number="settings.smtp.smtp_port">
+                                    </div>
+                                </div>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-input" x-model="settings.smtp.smtp_user">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" class="form-input" x-model="settings.smtp.smtp_password">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">From Address</label>
+                                    <input type="email" class="form-input" x-model="settings.smtp.smtp_from" placeholder="noreply@example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" x-model="settings.smtp.smtp_use_tls">
+                                        <span>Use TLS</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Notification Recipient Email</label>
+                                    <input type="email" class="form-input" x-model="settings.notification.notification_email" placeholder="you@example.com">
+                                </div>
+                                <div class="flex gap-2 mt-4">
+                                    <button class="btn btn-primary" @click="saveSmtp(); saveNotification();" :disabled="saving">Save Settings</button>
+                                    <button class="btn btn-secondary" @click="testSmtp()">Test Connection</button>
+                                </div>
+                            </div>
+
+                            <!-- Digest Settings -->
+                            <div x-show="activeTab === 'digest'" class="card">
+                                <h3 class="card-title mb-4">Daily Digest Email</h3>
+                                <div class="form-group">
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" x-model="settings.digest.daily_digest_enabled">
+                                        <span>Enable Daily Digest</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Send Time</label>
+                                    <input type="time" class="form-input" x-model="settings.digest.daily_digest_time" style="width: auto;">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Recipients (comma-separated)</label>
+                                    <input type="text" class="form-input" x-model="settings.digest.daily_digest_recipients" placeholder="admin@example.com, team@example.com">
+                                </div>
+                                <button class="btn btn-primary mt-4" @click="saveDigest()" :disabled="saving">Save Settings</button>
+                            </div>
+
+                            <!-- Retention Settings -->
+                            <div x-show="activeTab === 'retention'" class="card">
+                                <h3 class="card-title mb-4">Log Retention</h3>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label">Keep Logs For (days)</label>
+                                        <input type="number" class="form-input" x-model.number="settings.retention.log_retention_days" min="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Max Entries Per Script</label>
+                                        <input type="number" class="form-input" x-model.number="settings.retention.max_log_entries_per_script" min="1">
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary mt-4" @click="saveRetention()" :disabled="saving">Save Settings</button>
+                            </div>
+
+                            <!-- Backup Settings -->
+                            <div x-show="activeTab === 'backup'" class="card">
+                                <h3 class="card-title mb-4">Backup & Restore</h3>
+                                <div class="grid-2">
+                                    <div>
+                                        <h4 class="mb-2">Export Configuration</h4>
+                                        <p class="text-muted mb-4">Download all scripts, schedules, and settings as JSON.</p>
+                                        <button class="btn btn-primary" @click="downloadBackup()">Download Backup</button>
+                                    </div>
+                                    <div>
+                                        <h4 class="mb-2">Restore Configuration</h4>
+                                        <p class="text-muted mb-4">Upload a backup file to restore settings.</p>
+                                        <input type="file" accept=".json" @change="restoreBackup($event)" class="form-input">
+                                    </div>
+                                </div>
+
+                                <hr style="margin: 24px 0; border-color: var(--border-color);">
+
+                                <h3 class="card-title mb-4">Import from Cron</h3>
+                                <p class="text-muted mb-4">Import Python scripts from your crontab.</p>
+                                <button class="btn btn-secondary" @click="parseCrontab()">Scan Crontab</button>
+                            </div>
+
+                            <!-- Security Settings -->
+                            <template x-if="$store.app.authEnabled">
+                                <div x-show="activeTab === 'security'" class="card">
+                                    <h3 class="card-title mb-4">Security</h3>
+                                    <div class="form-group">
+                                        <h4 class="mb-2">Change Password</h4>
+                                        <p class="text-muted mb-4">Update your admin password.</p>
+                                        <button class="btn btn-secondary" @click="changePassword()">Change Password</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- Cron Import Modal -->
+                    <template x-if="showCronModal">
+                        <div class="modal-overlay" @click.self="showCronModal = false">
+                            <div class="modal" style="max-width: 700px;">
+                                <div class="modal-header">
+                                    <h3 class="modal-title">Import from Crontab</h3>
+                                    <button class="modal-close" @click="showCronModal = false">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <template x-if="cronJobs.length === 0">
+                                        <p>No Python scripts found in your crontab.</p>
+                                    </template>
+                                    <template x-if="cronJobs.length > 0">
+                                        <div>
+                                            <p class="mb-4">Select jobs to import:</p>
+                                            <template x-for="(job, idx) in cronJobs" :key="idx">
+                                                <div class="flex items-center gap-4" style="padding: 12px; border-bottom: 1px solid var(--border-color);">
+                                                    <input type="checkbox" x-model="job.selected">
+                                                    <div style="flex: 1;">
+                                                        <div class="font-mono" x-text="job.command"></div>
+                                                        <div class="text-muted" x-text="'Schedule: ' + job.expression"></div>
+                                                    </div>
+                                                    <span class="badge" :class="job.is_python ? 'badge-success' : 'badge-neutral'" x-text="job.is_python ? 'Python' : 'Other'"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" @click="showCronModal = false">Cancel</button>
+                                    <button class="btn btn-primary" @click="importSelectedCronJobs()">Import Selected</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </main>
+        </div>
+    </template>
+
+    <!-- Toast Container -->
+    <div class="toast-container">
+        <template x-for="toast in $store.app.toasts" :key="toast.id">
+            <div class="toast" :class="toast.type" x-text="toast.message"></div>
+        </template>
+    </div>
+</body>
+</html>
