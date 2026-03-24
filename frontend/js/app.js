@@ -114,8 +114,16 @@ document.addEventListener('alpine:init', () => {
 
         async init() {
             await this.refresh();
-            // Auto-refresh every 10 seconds
-            setInterval(() => this.refresh(), 10000);
+            // Auto-refresh: 2s when scripts are running, 10s otherwise
+            this._scheduleRefresh();
+        },
+
+        _scheduleRefresh() {
+            const interval = (this.running && this.running.length > 0) ? 2000 : 10000;
+            this._refreshTimer = setTimeout(async () => {
+                await this.refresh();
+                this._scheduleRefresh();
+            }, interval);
         },
 
         async refresh() {
@@ -215,6 +223,8 @@ document.addEventListener('alpine:init', () => {
         packages: [],
         loadingPackages: false,
         newPackage: '',
+        validationResult: null,
+        validating: false,
         showScheduleModal: false,
         scheduleForm: {
             script_id: null,
@@ -276,8 +286,10 @@ document.addEventListener('alpine:init', () => {
             };
             this.detectedVenvs = [];
             this.showCreateVenv = false;
+            this.validationResult = null;
             this.loadRuntimesForType(script.script_type || 'python');
             this.showModal = true;
+            this.checkDependencies();
         },
 
         resetForm() {
@@ -301,6 +313,7 @@ document.addEventListener('alpine:init', () => {
             };
             this.detectedVenvs = [];
             this.showCreateVenv = false;
+            this.validationResult = null;
         },
 
         getScriptTypeInfo(type) {
@@ -337,6 +350,29 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async checkDependencies() {
+            this.validating = true;
+            this.validationResult = null;
+            try {
+                const data = { ...this.form };
+                if (data.env_vars) {
+                    try {
+                        data.env_vars = JSON.parse(data.env_vars);
+                    } catch {
+                        this.validationResult = { valid: false, issues: ['Invalid JSON in environment variables'] };
+                        this.validating = false;
+                        return;
+                    }
+                } else {
+                    data.env_vars = null;
+                }
+                this.validationResult = await api.validateConfig(data);
+            } catch (e) {
+                this.validationResult = { valid: false, issues: [e.message] };
+            }
+            this.validating = false;
+        },
+
         async deleteScript(script) {
             if (!confirm(`Delete "${script.name}"? This will also delete all schedules and run history.`)) {
                 return;
@@ -355,9 +391,23 @@ document.addEventListener('alpine:init', () => {
                 const result = await api.runScript(script.id);
                 Alpine.store('app').showToast(`Started: ${script.name}`, 'success');
                 await this.refresh();
+                // Poll until no scripts are running
+                this._startRunPoll();
             } catch (e) {
                 Alpine.store('app').showToast(e.message, 'error');
             }
+        },
+
+        _startRunPoll() {
+            if (this._runPollTimer) return;
+            this._runPollTimer = setInterval(async () => {
+                await this.refresh();
+                const anyRunning = this.scripts.some(s => s.is_running);
+                if (!anyRunning) {
+                    clearInterval(this._runPollTimer);
+                    this._runPollTimer = null;
+                }
+            }, 2000);
         },
 
         async toggleExpand(script) {
@@ -434,6 +484,49 @@ document.addEventListener('alpine:init', () => {
             if (score >= 80) return 'high';
             if (score >= 50) return 'medium';
             return 'low';
+        },
+
+        hasPywebview() {
+            return !!(window.pywebview && window.pywebview.api);
+        },
+
+        async browseFile(field) {
+            if (!this.hasPywebview()) return;
+            try {
+                const path = await window.pywebview.api.browse_file();
+                if (path) {
+                    this.form[field] = path;
+                    // Auto-detect script type from extension when browsing for script path
+                    if (field === 'path') {
+                        const ext = path.split('.').pop().toLowerCase();
+                        const extMap = {
+                            py: 'python', sh: 'bash', bash: 'bash', zsh: 'zsh',
+                            js: 'node', mjs: 'node', rb: 'ruby', pl: 'perl',
+                            php: 'php', go: 'go', r: 'r', R: 'r',
+                            jl: 'julia', swift: 'swift', lua: 'lua',
+                            java: 'java', ps1: 'powershell', ts: 'deno'
+                        };
+                        if (extMap[ext]) {
+                            this.form.script_type = extMap[ext];
+                            this.onScriptTypeChange();
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Browse file error:', e);
+            }
+        },
+
+        async browseDirectory(field) {
+            if (!this.hasPywebview()) return;
+            try {
+                const path = await window.pywebview.api.browse_directory();
+                if (path) {
+                    this.form[field] = path;
+                }
+            } catch (e) {
+                console.error('Browse directory error:', e);
+            }
         },
 
         async loadRuntimes() {

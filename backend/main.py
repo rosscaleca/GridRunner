@@ -12,9 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from .config import settings
-from .database import init_db
+from .database import init_db, async_session
 from .logging_config import setup_logging
 from .scheduler import start_scheduler, stop_scheduler
+from .api.settings import load_settings_from_db
 
 # Import API routers
 from .api.auth import router as auth_router
@@ -35,6 +36,8 @@ async def lifespan(app: FastAPI):
     settings.ensure_directories()
     setup_logging()
     await init_db()
+    async with async_session() as session:
+        await load_settings_from_db(session)
     await start_scheduler()
     yield
     # Shutdown

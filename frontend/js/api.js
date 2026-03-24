@@ -120,6 +120,13 @@ class ApiClient {
         return this.request(`/scripts/${id}/validate`);
     }
 
+    async validateConfig(data) {
+        return this.request('/scripts/validate-config', {
+            method: 'POST',
+            body: data,
+        });
+    }
+
     async getScriptHealth(id) {
         return this.request(`/scripts/${id}/health`);
     }
