@@ -321,8 +321,8 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
                                         <template x-for="script in scripts" :key="script.id">
+                                            <tbody>
                                             <tr>
                                                 <td>
                                                     <div>
@@ -367,7 +367,7 @@
                                                 <td>
                                                     <div class="flex gap-2">
                                                         <button class="btn btn-sm btn-success" @click="runScript(script)" :disabled="script.is_running">Run</button>
-                                                        <button class="btn btn-sm btn-secondary" @click="expandedScript = (expandedScript === script.id ? null : script.id)">
+                                                        <button class="btn btn-sm btn-secondary" @click="toggleExpand(script)">
                                                             Details
                                                         </button>
                                                         <button class="btn btn-sm btn-secondary" @click="openEditModal(script)">Edit</button>
@@ -459,8 +459,8 @@
                                                         </div>
                                                     </td>
                                                 </tr>
+                                            </tbody>
                                         </template>
-                                    </tbody>
                                 </table>
                             </div>
                         </div>
@@ -490,7 +490,10 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Script Path *</label>
-                                            <input type="text" class="form-input" x-model="form.path" placeholder="/path/to/script" required>
+                                            <div class="flex gap-2">
+                                                <input type="text" class="form-input" x-model="form.path" placeholder="/path/to/script" required style="flex: 1;">
+                                                <button type="button" class="btn btn-sm btn-secondary" @click="browseFile('path')" x-show="hasPywebview()" title="Browse for script file">Browse</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="form-group">
@@ -520,7 +523,10 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Working Directory</label>
-                                            <input type="text" class="form-input" x-model="form.working_directory">
+                                            <div class="flex gap-2">
+                                                <input type="text" class="form-input" x-model="form.working_directory" style="flex: 1;">
+                                                <button type="button" class="btn btn-sm btn-secondary" @click="browseDirectory('working_directory')" x-show="hasPywebview()" title="Browse for directory">Browse</button>
+                                            </div>
                                             <p class="form-help">Leave empty for script's directory</p>
                                         </div>
                                     </div>
@@ -530,6 +536,7 @@
                                             <label class="form-label">Virtual Environment</label>
                                             <div class="flex gap-2">
                                                 <input type="text" class="form-input" x-model="form.venv_path" placeholder="/path/to/venv" style="flex: 1;">
+                                                <button type="button" class="btn btn-sm btn-secondary" @click="browseDirectory('venv_path')" x-show="hasPywebview()" title="Browse for venv directory">Browse</button>
                                                 <button type="button" class="btn btn-sm btn-secondary" @click="detectVenvs()">Detect</button>
                                                 <button type="button" class="btn btn-sm btn-secondary" @click="showCreateVenv = !showCreateVenv">Create</button>
                                             </div>
@@ -607,6 +614,26 @@
                                         <label class="form-label">Webhook URL</label>
                                         <input type="url" class="form-input" x-model="form.webhook_url" placeholder="https://...">
                                         <p class="form-help">POST request sent on completion</p>
+                                    </div>
+                                    <!-- Dependency Check -->
+                                    <div class="form-group" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-top: 8px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <label class="form-label" style="margin-bottom: 0;">Dependency Check</label>
+                                            <button type="button" class="btn btn-sm btn-secondary" @click="checkDependencies()" :disabled="!form.path || validating">
+                                                <span x-show="!validating">Check Dependencies</span>
+                                                <span x-show="validating" class="spinner" style="width: 14px; height: 14px;"></span>
+                                            </button>
+                                        </div>
+                                        <template x-if="validationResult && validationResult.valid">
+                                            <p style="color: var(--success); margin-top: 8px; font-size: 0.85rem;">&#10003; All dependencies found. Ready to save.</p>
+                                        </template>
+                                        <template x-if="validationResult && !validationResult.valid">
+                                            <div style="margin-top: 8px;">
+                                                <template x-for="issue in validationResult.issues" :key="issue">
+                                                    <p style="color: var(--error); font-size: 0.85rem; margin-bottom: 4px;">&#9888; <span x-text="issue"></span></p>
+                                                </template>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
                                 <div class="modal-footer">

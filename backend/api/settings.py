@@ -55,6 +55,36 @@ class AllSettings(BaseModel):
     dark_mode: bool = False
 
 
+async def load_settings_from_db(session: AsyncSession) -> None:
+    """Load saved settings from database into the in-memory config singleton.
+
+    Called once at startup so SMTP, digest, and retention settings
+    persist across app restarts without requiring the user to re-save.
+    """
+    smtp_raw = await get_setting(session, "smtp_settings")
+    if smtp_raw:
+        try:
+            smtp = json.loads(smtp_raw)
+            settings.smtp_host = smtp.get("smtp_host", "")
+            settings.smtp_port = smtp.get("smtp_port", 587)
+            settings.smtp_user = smtp.get("smtp_user", "")
+            settings.smtp_password = smtp.get("smtp_password", "")
+            settings.smtp_from = smtp.get("smtp_from", "")
+            settings.smtp_use_tls = smtp.get("smtp_use_tls", True)
+        except (json.JSONDecodeError, Exception):
+            logger.warning("Failed to load smtp_settings from DB", exc_info=True)
+
+    digest_raw = await get_setting(session, "digest_settings")
+    if digest_raw:
+        try:
+            digest = json.loads(digest_raw)
+            settings.daily_digest_enabled = digest.get("enabled", False)
+            settings.daily_digest_time = digest.get("time", "08:00")
+            settings.daily_digest_recipients = digest.get("recipients", "")
+        except (json.JSONDecodeError, Exception):
+            logger.warning("Failed to load digest_settings from DB", exc_info=True)
+
+
 async def get_setting(session: AsyncSession, key: str) -> Optional[str]:
     """Get a setting value from database."""
     result = await session.execute(

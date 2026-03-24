@@ -36,6 +36,32 @@ def wait_for_server(port: int, timeout: float = 10.0) -> None:
     raise TimeoutError(f"Server did not start within {timeout}s")
 
 
+class JsApi:
+    """Python API exposed to the frontend via window.pywebview.api."""
+
+    def __init__(self, window_ref):
+        self._window_ref = window_ref
+
+    def browse_file(self, file_types=None):
+        """Open a native file picker and return the selected path."""
+        result = self._window_ref().create_file_dialog(
+            webview.OPEN_DIALOG,
+            file_types=file_types or ("All files (*.*)",),
+        )
+        if result and len(result) > 0:
+            return result[0]
+        return None
+
+    def browse_directory(self):
+        """Open a native folder picker and return the selected path."""
+        result = self._window_ref().create_file_dialog(
+            webview.FOLDER_DIALOG,
+        )
+        if result and len(result) > 0:
+            return result[0]
+        return None
+
+
 def main() -> None:
     port = find_free_port()
 
@@ -58,6 +84,10 @@ def main() -> None:
 
     wait_for_server(port)
 
+    # Use a mutable container so JsApi can reference the window after creation
+    window_holder = []
+    js_api = JsApi(lambda: window_holder[0])
+
     # pywebview owns the main thread (native GUI event loop)
     window = webview.create_window(
         "GridRunner",
@@ -66,7 +96,9 @@ def main() -> None:
         height=800,
         resizable=True,
         min_size=(800, 600),
+        js_api=js_api,
     )
+    window_holder.append(window)
     webview.start()
 
     # Window closed — shut down server

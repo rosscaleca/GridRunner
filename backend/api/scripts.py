@@ -87,6 +87,18 @@ class CategoryResponse(BaseModel):
         from_attributes = True
 
 
+@router.post("/validate-config")
+async def validate_config(
+    data: ScriptCreate,
+    request: Request,
+    _: None = Depends(require_auth)
+):
+    """Validate script configuration before saving. No database required."""
+    script = Script(**data.model_dump())
+    issues = validate_script_config(script)
+    return {"valid": len(issues) == 0, "issues": issues}
+
+
 @router.get("", response_model=List[ScriptResponse])
 async def list_scripts(
     request: Request,
