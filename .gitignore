@@ -5,6 +5,7 @@ __pycache__/
 .env
 venv/
 *.egg-info/
+.venv/
 .pytest_cache/
 .DS_Store
 CLAUDE.md

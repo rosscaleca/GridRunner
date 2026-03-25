@@ -47,22 +47,38 @@ Grab the latest release for your platform from the [Releases](https://github.com
 | Windows  | `GridRunner-windows.zip` |
 | Linux    | `GridRunner-linux.zip` |
 
-### From Source
+### From Source (uv)
+
+[uv](https://docs.astral.sh/uv/) is the recommended way to run from source — no Python install required:
 
 ```bash
 git clone https://github.com/rosscaleca/GridRunner.git
 cd GridRunner
-python3 -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+uv run run.py
 ```
+
+`uv` will automatically download the correct Python version and install dependencies on first run.
+
+<details>
+<summary>Alternative: pip</summary>
+
+```bash
+git clone https://github.com/rosscaleca/GridRunner.git
+cd GridRunner
+python3 -m venv .venv
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install .
+python run.py
+```
+
+</details>
 
 ## Usage
 
 ### Desktop App
 
 ```bash
-python run.py
+uv run run.py
 ```
 
 This finds an available port, starts the FastAPI server in a background thread, and opens a native window via pywebview.
@@ -72,7 +88,7 @@ This finds an available port, starts the FastAPI server in a background thread, 
 Run in a browser with hot reload:
 
 ```bash
-uvicorn backend.main:app --host 127.0.0.1 --port 8420 --reload
+uv run uvicorn backend.main:app --host 127.0.0.1 --port 8420 --reload
 ```
 
 Then open `http://127.0.0.1:8420` in your browser.
@@ -80,7 +96,7 @@ Then open `http://127.0.0.1:8420` in your browser.
 ### With Authentication
 
 ```bash
-GRIDRUNNER_AUTH_ENABLED=true python run.py
+GRIDRUNNER_AUTH_ENABLED=true uv run run.py
 ```
 
 On first launch you'll be prompted to set a password.
@@ -113,8 +129,7 @@ GridRunner auto-detects the script type from the file extension when using the f
 ## Testing
 
 ```bash
-source venv/bin/activate
-pytest -v
+uv run pytest -v
 ```
 
 66 tests covering script execution, runtime discovery, and scheduling.
@@ -211,4 +226,5 @@ build/
 - **Frontend:** Alpine.js 3, vanilla CSS (no build step)
 - **Desktop:** pywebview (native OS webview)
 - **Database:** SQLite via aiosqlite
+- **Dev tooling:** [uv](https://docs.astral.sh/uv/) (dependency management, Python version management)
 - **Packaging:** PyInstaller, GitHub Actions CI/CD
