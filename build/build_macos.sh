@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "Building GridRunner for macOS..."
-pip install -r requirements.txt pyinstaller
+pip install . pyinstaller
 pyinstaller build/gridrunner.spec --distpath dist/macos_raw --workpath build/tmp --clean
 
 # Only keep the .app bundle for distribution
