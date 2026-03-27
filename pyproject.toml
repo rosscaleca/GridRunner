@@ -17,6 +17,7 @@ dependencies = [
     "aiofiles>=23.0.0",
     "python-crontab>=3.0.0",
     "httpx>=0.26.0",
+    "certifi>=2024.0.0",
     "sse-starlette>=2.0.0",
     "itsdangerous>=2.1.0",
     "greenlet>=3.0.0",

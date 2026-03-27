@@ -146,7 +146,7 @@ bash build/build_macos.sh    # Output: dist/macos/GridRunner.app
 
 ### Linux
 
-Requires `libwebkit2gtk-4.0-dev`:
+Requires `libwebkit2gtk-4.1-dev`:
 
 ```bash
 bash build/build_linux.sh    # Output: dist/linux/GridRunner/
