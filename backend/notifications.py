@@ -1,11 +1,13 @@
 """Email and webhook notification handlers."""
 
 import json
+import ssl
 from datetime import datetime, timedelta
 from typing import Optional, List
 import asyncio
 
 import aiosmtplib
+import certifi
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import httpx
@@ -41,6 +43,7 @@ async def send_email(
         if html_body:
             msg.attach(MIMEText(html_body, "html"))
 
+        tls_context = ssl.create_default_context(cafile=certifi.where())
         await aiosmtplib.send(
             msg,
             hostname=settings.smtp_host,
@@ -48,6 +51,7 @@ async def send_email(
             username=settings.smtp_user or None,
             password=settings.smtp_password or None,
             start_tls=settings.smtp_use_tls,
+            tls_context=tls_context,
         )
         return True
     except Exception as e:
@@ -241,10 +245,12 @@ async def test_smtp_connection() -> dict:
         return {"success": False, "error": "SMTP host not configured"}
 
     try:
+        tls_context = ssl.create_default_context(cafile=certifi.where())
         smtp = aiosmtplib.SMTP(
             hostname=settings.smtp_host,
             port=settings.smtp_port,
             start_tls=settings.smtp_use_tls,
+            tls_context=tls_context,
         )
         await smtp.connect()
         if settings.smtp_user and settings.smtp_password:
