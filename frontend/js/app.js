@@ -732,6 +732,8 @@ document.addEventListener('alpine:init', () => {
         activeTab: 'smtp',
         cronJobs: [],
         showCronModal: false,
+        categories: [],
+        newCategory: { name: '', color: '#6366f1' },
 
         async init() {
             await this.refresh();
@@ -739,11 +741,69 @@ document.addEventListener('alpine:init', () => {
 
         async refresh() {
             try {
-                this.settings = await api.getSettings();
+                const [settings, categories] = await Promise.all([
+                    api.getSettings(),
+                    api.getCategories(),
+                ]);
+                this.settings = settings;
+                this.categories = categories;
             } catch (e) {
                 console.error('Settings refresh error:', e);
             }
             this.loading = false;
+        },
+
+        async refreshCategories() {
+            try {
+                this.categories = await api.getCategories();
+            } catch (e) {
+                console.error('Categories refresh error:', e);
+            }
+        },
+
+        async addCategory() {
+            const name = this.newCategory.name.trim();
+            if (!name) return;
+            this.saving = true;
+            try {
+                await api.createCategory({ name, color: this.newCategory.color });
+                this.newCategory = { name: '', color: '#6366f1' };
+                await this.refreshCategories();
+                Alpine.store('app').showToast('Category added', 'success');
+            } catch (e) {
+                Alpine.store('app').showToast(e.message, 'error');
+            }
+            this.saving = false;
+        },
+
+        async updateCategory(id, data) {
+            if (data.name !== undefined && !data.name.trim()) {
+                Alpine.store('app').showToast('Name cannot be empty', 'error');
+                await this.refreshCategories();
+                return;
+            }
+            try {
+                await api.updateCategory(id, data);
+                await this.refreshCategories();
+                Alpine.store('app').showToast('Category updated', 'success');
+            } catch (e) {
+                Alpine.store('app').showToast(e.message, 'error');
+                await this.refreshCategories();
+            }
+        },
+
+        async deleteCategory(cat) {
+            const msg = cat.script_count > 0
+                ? `Delete "${cat.name}"? ${cat.script_count} script(s) will be uncategorized.`
+                : `Delete "${cat.name}"?`;
+            if (!confirm(msg)) return;
+            try {
+                await api.deleteCategory(cat.id);
+                await this.refreshCategories();
+                Alpine.store('app').showToast('Category deleted', 'success');
+            } catch (e) {
+                Alpine.store('app').showToast(e.message, 'error');
+            }
         },
 
         async saveSmtp() {

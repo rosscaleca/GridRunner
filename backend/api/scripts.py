@@ -87,6 +87,11 @@ class CategoryResponse(BaseModel):
         from_attributes = True
 
 
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
 @router.post("/validate-config")
 async def validate_config(
     data: ScriptCreate,
@@ -469,6 +474,40 @@ async def create_category(
     )
 
 
+@router.put("/categories/{category_id}", response_model=CategoryResponse)
+async def update_category(
+    category_id: int,
+    data: CategoryUpdate,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_auth)
+):
+    """Update a category's name and/or color."""
+    result = await session.execute(
+        select(Category)
+        .options(selectinload(Category.scripts))
+        .where(Category.id == category_id)
+    )
+    category = result.scalar_one_or_none()
+
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    updates = data.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(category, field, value)
+
+    await session.commit()
+    await session.refresh(category)
+
+    return CategoryResponse(
+        id=category.id,
+        name=category.name,
+        color=category.color,
+        script_count=len(category.scripts)
+    )
+
+
 @router.delete("/categories/{category_id}")
 async def delete_category(
     category_id: int,
@@ -476,14 +515,21 @@ async def delete_category(
     session: AsyncSession = Depends(get_session),
     _: None = Depends(require_auth)
 ):
-    """Delete a category."""
+    """Delete a category. Scripts keep their data; their category_id becomes NULL."""
     result = await session.execute(
-        select(Category).where(Category.id == category_id)
+        select(Category)
+        .options(selectinload(Category.scripts))
+        .where(Category.id == category_id)
     )
     category = result.scalar_one_or_none()
 
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
+
+    # SQLite FKs are off by default, so ondelete=SET NULL won't fire —
+    # null out script.category_id explicitly.
+    for script in category.scripts:
+        script.category_id = None
 
     await session.delete(category)
     await session.commit()

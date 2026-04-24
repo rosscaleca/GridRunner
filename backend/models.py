@@ -22,9 +22,7 @@ class Category(Base):
     )
 
     # Relationships
-    scripts: Mapped[List["Script"]] = relationship(
-        back_populates="category", cascade="all, delete-orphan"
-    )
+    scripts: Mapped[List["Script"]] = relationship(back_populates="category")
 
 
 class Script(Base):
