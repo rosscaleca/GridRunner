@@ -844,6 +844,7 @@
                                 <div class="tab" :class="{ 'active': activeTab === 'smtp' }" @click="activeTab = 'smtp'">Email (SMTP)</div>
                                 <div class="tab" :class="{ 'active': activeTab === 'digest' }" @click="activeTab = 'digest'">Daily Digest</div>
                                 <div class="tab" :class="{ 'active': activeTab === 'retention' }" @click="activeTab = 'retention'">Retention</div>
+                                <div class="tab" :class="{ 'active': activeTab === 'categories' }" @click="activeTab = 'categories'">Categories</div>
                                 <div class="tab" :class="{ 'active': activeTab === 'backup' }" @click="activeTab = 'backup'">Backup & Import</div>
                                 <template x-if="$store.app.authEnabled">
                                     <div class="tab" :class="{ 'active': activeTab === 'security' }" @click="activeTab = 'security'">Security</div>
@@ -927,6 +928,36 @@
                                     </div>
                                 </div>
                                 <button class="btn btn-primary mt-4" @click="saveRetention()" :disabled="saving">Save Settings</button>
+                            </div>
+
+                            <!-- Categories Settings -->
+                            <div x-show="activeTab === 'categories'" class="card">
+                                <h3 class="card-title mb-4">Manage Categories</h3>
+                                <p class="text-muted mb-4">Categories help you group and filter scripts. They're shown in the script editor dropdown.</p>
+
+                                <div class="form-group">
+                                    <label class="form-label">Add a Category</label>
+                                    <div class="flex gap-2 items-center">
+                                        <input type="text" class="form-input" x-model="newCategory.name" placeholder="Category name" style="flex: 1;" @keydown.enter="addCategory()">
+                                        <input type="color" x-model="newCategory.color" style="width: 48px; height: 38px; padding: 2px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                        <button class="btn btn-primary" @click="addCategory()" :disabled="!newCategory.name.trim() || saving">Add</button>
+                                    </div>
+                                </div>
+
+                                <hr style="margin: 24px 0; border-color: var(--border-color);">
+
+                                <template x-if="categories.length === 0">
+                                    <p class="text-muted">No categories yet. Add your first one above.</p>
+                                </template>
+
+                                <template x-for="cat in categories" :key="cat.id">
+                                    <div class="flex items-center gap-2" style="padding: 12px; border-bottom: 1px solid var(--border-color);">
+                                        <input type="color" :value="cat.color" @change="updateCategory(cat.id, { color: $event.target.value })" style="width: 38px; height: 38px; padding: 2px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                        <input type="text" class="form-input" :value="cat.name" @change="updateCategory(cat.id, { name: $event.target.value })" style="flex: 1;">
+                                        <span class="badge badge-neutral" x-text="cat.script_count + (cat.script_count === 1 ? ' script' : ' scripts')"></span>
+                                        <button class="btn btn-danger btn-sm" @click="deleteCategory(cat)">Delete</button>
+                                    </div>
+                                </template>
                             </div>
 
                             <!-- Backup Settings -->

@@ -183,6 +183,13 @@ class ApiClient {
         });
     }
 
+    async updateCategory(id, data) {
+        return this.request(`/scripts/categories/${id}`, {
+            method: 'PUT',
+            body: data,
+        });
+    }
+
     async deleteCategory(id) {
         return this.request(`/scripts/categories/${id}`, { method: 'DELETE' });
     }
