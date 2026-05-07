@@ -130,7 +130,12 @@ document.addEventListener('alpine:init', () => {
 
         async refreshCurrentPage() {
             const fn = this.pageRefreshers[this.currentPage];
-            if (fn) await fn();
+            if (!fn) return;
+            try {
+                await fn();
+            } catch (e) {
+                this.showToast('Refresh failed — server may be unreachable', 'error');
+            }
         },
 
         _fireSubscribers(eventType) {
