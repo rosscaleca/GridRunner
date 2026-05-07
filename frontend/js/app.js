@@ -697,6 +697,7 @@ document.addEventListener('alpine:init', () => {
         runs: [],
         loading: true,
         selectedRun: null,
+        cancellingModal: false,
         filter: {
             scriptId: '',
             status: ''
@@ -732,6 +733,27 @@ document.addEventListener('alpine:init', () => {
 
         closeRunModal() {
             this.selectedRun = null;
+        },
+
+        async cancelRunFromModal() {
+            if (!this.selectedRun || this.selectedRun.status !== 'running') return;
+            this.cancellingModal = true;
+            try {
+                const ok = await Alpine.store('app').cancelRun(
+                    this.selectedRun.script_id,
+                    this.selectedRun.id,
+                    this.selectedRun.script_name || `Run #${this.selectedRun.id}`
+                );
+                if (ok) {
+                    // Refresh selected run detail and the underlying history list
+                    try {
+                        this.selectedRun = await api.getRun(this.selectedRun.id);
+                    } catch (_) { /* run may have just finished; ignore */ }
+                    await this.refresh();
+                }
+            } finally {
+                this.cancellingModal = false;
+            }
         },
 
         async deleteRun(run) {

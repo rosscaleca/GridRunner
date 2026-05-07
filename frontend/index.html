@@ -835,6 +835,13 @@
                                     <pre class="log-output stderr" x-text="selectedRun.stderr || '(no errors)'"></pre>
                                 </div>
                                 <div class="modal-footer">
+                                    <template x-if="selectedRun.status === 'running'">
+                                        <button class="btn btn-danger"
+                                                @click="cancelRunFromModal()"
+                                                :disabled="cancellingModal">
+                                            Cancel Run
+                                        </button>
+                                    </template>
                                     <a :href="'/api/runs/' + selectedRun.id + '/download'" class="btn btn-secondary" download>Download Log</a>
                                     <button class="btn btn-primary" @click="closeRunModal()">Close</button>
                                 </div>
