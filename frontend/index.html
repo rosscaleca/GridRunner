@@ -171,10 +171,17 @@
                                                         <div x-text="run.script_name"></div>
                                                         <div class="text-muted" x-text="formatDuration(run.duration_so_far)"></div>
                                                     </div>
-                                                    <span class="badge badge-info">
-                                                        <span class="spinner" style="width: 12px; height: 12px;"></span>
-                                                        Running
-                                                    </span>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="badge badge-info">
+                                                            <span class="spinner" style="width: 12px; height: 12px;"></span>
+                                                            Running
+                                                        </span>
+                                                        <button class="btn btn-sm btn-danger"
+                                                                @click="cancelRun(run)"
+                                                                :disabled="cancelling.includes(run.run_id)">
+                                                            Cancel
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </template>
                                         </div>
