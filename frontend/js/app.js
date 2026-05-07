@@ -213,16 +213,11 @@ document.addEventListener('alpine:init', () => {
 
         async init() {
             await this.refresh();
-            // Auto-refresh: 2s when scripts are running, 10s otherwise
-            this._scheduleRefresh();
-        },
-
-        _scheduleRefresh() {
-            const interval = (this.running && this.running.length > 0) ? 2000 : 10000;
-            this._refreshTimer = setTimeout(async () => {
-                await this.refresh();
-                this._scheduleRefresh();
-            }, interval);
+            const debounced = debounce(() => this.refresh(), 200);
+            const store = Alpine.store('app');
+            store.registerRefresher('dashboard', () => this.refresh());
+            store.subscribeEvents('runs.changed', debounced);
+            store.subscribeEvents('scripts.changed', debounced);
         },
 
         async refresh() {
@@ -354,6 +349,12 @@ document.addEventListener('alpine:init', () => {
         async init() {
             await this.refresh();
             this.loadRuntimes();
+            const debounced = debounce(() => this.refresh(), 200);
+            const store = Alpine.store('app');
+            store.registerRefresher('scripts', () => this.refresh());
+            store.subscribeEvents('runs.changed', debounced);
+            store.subscribeEvents('scripts.changed', debounced);
+            store.subscribeEvents('categories.changed', debounced);
         },
 
         async refresh() {
@@ -503,8 +504,6 @@ document.addEventListener('alpine:init', () => {
                 const result = await api.runScript(script.id);
                 Alpine.store('app').showToast(`Started: ${script.name}`, 'success');
                 await this.refresh();
-                // Poll until no scripts are running
-                this._startRunPoll();
             } catch (e) {
                 Alpine.store('app').showToast(e.message, 'error');
             }
@@ -524,18 +523,6 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.cancelling = this.cancelling.filter(id => id !== script.id);
             }
-        },
-
-        _startRunPoll() {
-            if (this._runPollTimer) return;
-            this._runPollTimer = setInterval(async () => {
-                await this.refresh();
-                const anyRunning = this.scripts.some(s => s.is_running);
-                if (!anyRunning) {
-                    clearInterval(this._runPollTimer);
-                    this._runPollTimer = null;
-                }
-            }, 2000);
         },
 
         async toggleExpand(script) {
@@ -785,6 +772,11 @@ document.addEventListener('alpine:init', () => {
 
         async init() {
             await this.refresh();
+            const debounced = debounce(() => this.refresh(), 200);
+            const store = Alpine.store('app');
+            store.registerRefresher('history', () => this.refresh());
+            store.subscribeEvents('runs.changed', debounced);
+            store.subscribeEvents('scripts.changed', debounced);
         },
 
         async refresh() {
@@ -887,6 +879,12 @@ document.addEventListener('alpine:init', () => {
 
         async init() {
             await this.refresh();
+            const debounced = debounce(() => this.refresh(), 200);
+            const store = Alpine.store('app');
+            store.registerRefresher('settings', () => this.refresh());
+            store.subscribeEvents('settings.changed', debounced);
+            store.subscribeEvents('categories.changed', debounced);
+            store.subscribeEvents('scripts.changed', debounced);
         },
 
         async refresh() {
