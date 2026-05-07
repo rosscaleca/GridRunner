@@ -1,11 +1,37 @@
 """Configuration management for GridRunner."""
 
 import os
+import secrets
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from pydantic_settings import BaseSettings
 from pydantic import Field
+
+
+def _load_or_generate_secret_key() -> str:
+    """Return the per-install session secret, generating + persisting it on first run.
+
+    Stored at ~/.gridrunner/secret_key with mode 0600. Used as the SessionMiddleware
+    signing key. The GRIDRUNNER_SECRET_KEY env var still takes precedence (Pydantic
+    only consults this default when no other source supplies a value).
+
+    Note: hardcodes ~/.gridrunner so the key is stable even if data_dir is overridden;
+    if you override data_dir, also set GRIDRUNNER_SECRET_KEY explicitly.
+    """
+    key_path = Path.home() / ".gridrunner" / "secret_key"
+    if key_path.exists():
+        return key_path.read_text().strip()
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    key = secrets.token_hex(32)
+    key_path.write_text(key)
+    try:
+        key_path.chmod(0o600)
+    except OSError:
+        # chmod can fail on some filesystems (e.g., Windows-mounted volumes); the
+        # key is still confidential by virtue of being in the user's home dir.
+        pass
+    return key
 
 
 class Settings(BaseSettings):
@@ -24,9 +50,7 @@ class Settings(BaseSettings):
     port: int = 8420
 
     # Security
-    secret_key: str = Field(
-        default="change-me-in-production-use-a-real-secret-key"
-    )
+    secret_key: str = Field(default_factory=_load_or_generate_secret_key)
     session_expire_hours: int = 24
     auth_enabled: bool = False
 

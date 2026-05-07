@@ -175,7 +175,7 @@ All environment variables use the `GRIDRUNNER_` prefix:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SECRET_KEY` | *(insecure default)* | Session signing key |
+| `SECRET_KEY` | *(auto-generated per install at `~/.gridrunner/secret_key`)* | Session signing key. Override only if you need a fixed value (e.g., shared across deployments). |
 | `PORT` | `8420` | Server port (auto-assigned in desktop mode) |
 | `HOST` | `127.0.0.1` | Bind address |
 | `TIMEZONE` | `America/Los_Angeles` | Display timezone |
