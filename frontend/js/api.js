@@ -31,8 +31,10 @@ class ApiClient {
             }
 
             if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || `HTTP ${response.status}`);
+                const body = await response.json().catch(() => ({}));
+                const err = new Error(body.detail || `HTTP ${response.status}`);
+                err.status = response.status;
+                throw err;
             }
 
             // Check if response is JSON
