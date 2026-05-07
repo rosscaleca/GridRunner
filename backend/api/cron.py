@@ -13,6 +13,7 @@ from ..database import get_session
 from ..logging_config import get_logger
 from ..models import Script, Schedule
 from ..scheduler import add_job
+from .. import events
 from .auth import require_auth
 
 logger = get_logger("api.cron")
@@ -153,6 +154,10 @@ async def import_cron_jobs(
         # Add to scheduler
         await add_job(schedule.id, session)
         imported["schedules"] += 1
+
+    events.emit("scripts.changed")
+    events.emit("categories.changed")  # cron import may create categories
+    events.emit("settings.changed")  # in case any settings were touched
 
     return {
         "message": f"Imported {imported['scripts']} scripts with {imported['schedules']} schedules",

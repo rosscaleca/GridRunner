@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from ..database import get_session
 from ..models import Schedule, Script
 from ..scheduler import add_job, remove_job, toggle_schedule
+from .. import events
 from .auth import require_auth
 
 router = APIRouter()
@@ -162,6 +163,8 @@ async def create_schedule(
         await add_job(schedule.id, session)
         await session.refresh(schedule)
 
+    events.emit("scripts.changed")
+
     return ScheduleResponse(
         id=schedule.id,
         script_id=schedule.script_id,
@@ -248,6 +251,8 @@ async def update_schedule(
 
     await session.refresh(schedule)
 
+    events.emit("scripts.changed")
+
     return ScheduleResponse(
         id=schedule.id,
         script_id=schedule.script_id,
@@ -287,6 +292,8 @@ async def delete_schedule(
     await session.delete(schedule)
     await session.commit()
 
+    events.emit("scripts.changed")
+
     return {"message": "Schedule deleted"}
 
 
@@ -308,5 +315,7 @@ async def toggle_schedule_endpoint(
 
     new_state = not schedule.enabled
     await toggle_schedule(schedule_id, new_state)
+
+    events.emit("scripts.changed")
 
     return {"enabled": new_state}
