@@ -528,7 +528,7 @@ tr:hover {
 /* Toast Notifications */
 .toast-container {
   position: fixed;
-  bottom: 24px;
+  bottom: 88px; /* clear the floating Refresh button (48px + 16px gap) */
   right: 24px;
   z-index: 2000;
   display: flex;
@@ -771,7 +771,7 @@ tr:hover {
     line-height: 1;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     transition: transform 0.15s ease, border-color 0.3s ease, box-shadow 0.15s ease;
-    z-index: 1000;
+    z-index: 999; /* below modal-overlay (1000) so the FAB doesn't pierce open modals */
 }
 
 .refresh-fab:hover {
