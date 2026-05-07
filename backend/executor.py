@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models import Script, Run, Schedule
 from .database import async_session
 from .config import get_local_now
+from . import events
 
 
 # Track running processes for kill functionality
@@ -188,7 +189,7 @@ async def execute_script(
         await session.refresh(run)
         run_id = run.id
 
-    # Execute in background
+    events.emit("runs.changed")
     asyncio.create_task(_run_script_process(script_id, run_id))
     return run_id
 
@@ -335,6 +336,8 @@ async def _run_script_process(script_id: int, run_id: int) -> None:
             run.exit_code = process.returncode
 
         await session.commit()
+
+        events.emit("runs.changed")
 
         # Trigger notifications if needed
         from .notifications import send_run_notification

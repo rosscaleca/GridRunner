@@ -14,6 +14,7 @@ from ..database import get_session
 from ..models import Script, Category, Run
 from ..executor import execute_script, kill_script, running_processes, validate_script as validate_script_config
 from ..runtimes import get_interpreter_version
+from .. import events
 from .auth import require_auth
 
 router = APIRouter()
@@ -202,6 +203,8 @@ async def create_script(
     await session.commit()
     await session.refresh(script)
 
+    events.emit("scripts.changed")
+
     return ScriptResponse(
         id=script.id,
         name=script.name,
@@ -315,6 +318,8 @@ async def update_script(
     await session.commit()
     await session.refresh(script)
 
+    events.emit("scripts.changed")
+
     return ScriptResponse(
         id=script.id,
         name=script.name,
@@ -356,6 +361,8 @@ async def delete_script(
 
     await session.delete(script)
     await session.commit()
+
+    events.emit("scripts.changed")
 
     return {"message": "Script deleted"}
 
@@ -488,6 +495,8 @@ async def create_category(
     await session.commit()
     await session.refresh(category)
 
+    events.emit("categories.changed")
+
     return CategoryResponse(
         id=category.id,
         name=category.name,
@@ -522,6 +531,8 @@ async def update_category(
     await session.commit()
     await session.refresh(category)
 
+    events.emit("categories.changed")
+
     return CategoryResponse(
         id=category.id,
         name=category.name,
@@ -555,5 +566,7 @@ async def delete_category(
 
     await session.delete(category)
     await session.commit()
+
+    events.emit("categories.changed")
 
     return {"message": "Category deleted"}

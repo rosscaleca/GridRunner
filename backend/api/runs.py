@@ -14,6 +14,7 @@ from ..database import get_session
 from ..models import Run, Script
 from ..executor import stream_output
 from ..config import settings
+from .. import events
 from .auth import require_auth
 
 router = APIRouter()
@@ -176,6 +177,8 @@ async def delete_run(
     await session.delete(run)
     await session.commit()
 
+    events.emit("runs.changed")
+
     return {"message": "Run deleted"}
 
 
@@ -199,6 +202,8 @@ async def cleanup_old_runs(
         )
     )
     await session.commit()
+
+    events.emit("runs.changed")
 
     return {"deleted": result.rowcount}
 
@@ -241,6 +246,8 @@ async def cleanup_excess_runs(
             total_deleted += len(run_ids_to_delete)
 
     await session.commit()
+
+    events.emit("runs.changed")
 
     return {"deleted": total_deleted}
 

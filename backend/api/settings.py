@@ -16,6 +16,7 @@ from ..logging_config import get_logger
 from ..models import AppSetting, Script, Schedule, Category
 from ..config import settings
 from ..notifications import test_smtp_connection
+from .. import events
 from .auth import require_auth
 
 logger = get_logger("api.settings")
@@ -169,6 +170,8 @@ async def update_smtp_settings(
     settings.smtp_from = data.smtp_from
     settings.smtp_use_tls = data.smtp_use_tls
 
+    events.emit("settings.changed")
+
     return {"message": "SMTP settings updated"}
 
 
@@ -188,6 +191,8 @@ async def update_digest_settings(
     settings.daily_digest_time = data.daily_digest_time
     settings.daily_digest_recipients = data.daily_digest_recipients
 
+    events.emit("settings.changed")
+
     return {"message": "Digest settings updated"}
 
 
@@ -206,6 +211,8 @@ async def update_retention_settings(
     settings.log_retention_days = data.log_retention_days
     settings.max_log_entries_per_script = data.max_log_entries_per_script
 
+    events.emit("settings.changed")
+
     return {"message": "Retention settings updated"}
 
 
@@ -219,6 +226,8 @@ async def update_notification_settings(
     """Update notification settings."""
     await set_setting(session, "notification_email", data.notification_email)
     await session.commit()
+
+    events.emit("settings.changed")
 
     return {"message": "Notification settings updated"}
 
@@ -380,6 +389,10 @@ async def restore_config(
         restored["settings"] += 1
 
     await session.commit()
+
+    events.emit("scripts.changed")
+    events.emit("categories.changed")
+    events.emit("settings.changed")
 
     # Save backup file
     backup_path = settings.data_dir / "backups" / f"restored-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
