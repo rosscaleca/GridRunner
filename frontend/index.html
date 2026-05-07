@@ -1066,5 +1066,17 @@
             <div class="toast" :class="toast.type" x-text="toast.message"></div>
         </template>
     </div>
+    <button x-show="$store.app.authenticated"
+            class="refresh-fab"
+            :class="{
+                'fab-connected': $store.app.sseConnected,
+                'fab-disconnected': !$store.app.sseConnected,
+                'fab-refreshing': fabRefreshing
+            }"
+            x-data="{ fabRefreshing: false }"
+            @click="fabRefreshing = true; await $store.app.refreshCurrentPage(); fabRefreshing = false"
+            :title="$store.app.sseConnected ? 'Refresh current page (live updates: connected)' : 'Refresh current page (live updates: disconnected)'">
+        <span class="refresh-icon">↻</span>
+    </button>
 </body>
 </html>
