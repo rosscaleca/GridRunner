@@ -23,6 +23,7 @@ document.addEventListener('alpine:init', () => {
         eventSubscribers: {},        // { eventType: Set<callback> }
         pageRefreshers: {},          // { pageName: refreshFn }
         sseConnected: false,
+        sseReconnecting: false,
         _reconnectTimer: null,
         _reconnectDelay: 1000,       // backoff state, reset on successful connect
 
@@ -99,6 +100,7 @@ document.addEventListener('alpine:init', () => {
             // under flapping reconnects.
             es.onopen = () => {
                 this._reconnectDelay = 1000;
+                this.sseReconnecting = false;
             };
             es.addEventListener('connected', () => {
                 this.sseConnected = true;
@@ -145,6 +147,7 @@ document.addEventListener('alpine:init', () => {
 
         _scheduleReconnect() {
             if (this._reconnectTimer) return;
+            this.sseReconnecting = true;
             if (this.eventSource) {
                 this.eventSource.close();
                 this.eventSource = null;

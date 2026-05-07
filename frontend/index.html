@@ -1070,12 +1070,17 @@
             class="refresh-fab"
             :class="{
                 'fab-connected': $store.app.sseConnected,
-                'fab-disconnected': !$store.app.sseConnected,
+                'fab-disconnected': !$store.app.sseConnected && !$store.app.sseReconnecting,
+                'fab-reconnecting': $store.app.sseReconnecting && !$store.app.sseConnected,
                 'fab-refreshing': fabRefreshing
             }"
             x-data="{ fabRefreshing: false }"
             @click="fabRefreshing = true; await $store.app.refreshCurrentPage(); fabRefreshing = false"
-            :title="$store.app.sseConnected ? 'Refresh current page (live updates: connected)' : 'Refresh current page (live updates: disconnected)'">
+            :title="$store.app.sseConnected
+                ? 'Refresh current page (live updates: connected)'
+                : $store.app.sseReconnecting
+                    ? 'Refresh current page (live updates: reconnecting...)'
+                    : 'Refresh current page (live updates: disconnected)'">
         <span class="refresh-icon">↻</span>
     </button>
 </body>
