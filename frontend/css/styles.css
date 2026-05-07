@@ -791,6 +791,11 @@ tr:hover {
     border-color: var(--text-muted);
 }
 
+.refresh-fab.fab-reconnecting {
+    border-color: var(--warning);
+    animation: refresh-fab-pulse 1.5s ease-in-out infinite;
+}
+
 .refresh-fab.fab-refreshing .refresh-icon {
     animation: refresh-spin 0.8s linear infinite;
 }
@@ -798,4 +803,9 @@ tr:hover {
 @keyframes refresh-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+@keyframes refresh-fab-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
 }
