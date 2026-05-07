@@ -27,6 +27,7 @@ from .api.settings import router as settings_router
 from .api.cron import router as cron_router
 from .api.runtimes import router as runtimes_router
 from .api.environments import router as environments_router
+from .api.events import router as events_router
 
 
 @asynccontextmanager
@@ -77,6 +78,7 @@ app.include_router(settings_router, prefix="/api/settings", tags=["settings"])
 app.include_router(cron_router, prefix="/api/cron", tags=["cron"])
 app.include_router(runtimes_router, prefix="/api/runtimes", tags=["runtimes"])
 app.include_router(environments_router, prefix="/api/environments", tags=["environments"])
+app.include_router(events_router, prefix="/api/events", tags=["events"])
 
 # Get the frontend directory path (PyInstaller bundles under sys._MEIPASS)
 if getattr(sys, 'frozen', False):
