@@ -271,6 +271,7 @@ document.addEventListener('alpine:init', () => {
         },
         expandedScript: null,
         scriptSchedules: {},
+        cancelling: [],
 
         async init() {
             await this.refresh();
@@ -428,6 +429,22 @@ document.addEventListener('alpine:init', () => {
                 this._startRunPoll();
             } catch (e) {
                 Alpine.store('app').showToast(e.message, 'error');
+            }
+        },
+
+        async cancelRun(script) {
+            if (!script.running_run_id) {
+                Alpine.store('app').showToast('No running run found for this script', 'error');
+                return;
+            }
+            this.cancelling.push(script.id);
+            try {
+                const ok = await Alpine.store('app').cancelRun(
+                    script.id, script.running_run_id, script.name
+                );
+                if (ok) await this.refresh();
+            } finally {
+                this.cancelling = this.cancelling.filter(id => id !== script.id);
             }
         },
 
