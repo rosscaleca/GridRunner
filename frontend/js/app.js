@@ -1,5 +1,14 @@
 // GridRunner - Main Alpine.js Application
 
+// Small debounce helper used to coalesce SSE event bursts into single refetches.
+function debounce(fn, ms) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+    };
+}
+
 document.addEventListener('alpine:init', () => {
     // Global store for app state
     Alpine.store('app', {
@@ -10,6 +19,12 @@ document.addEventListener('alpine:init', () => {
         darkMode: false,
         loading: true,
         toasts: [],
+        eventSource: null,
+        eventSubscribers: {},        // { eventType: Set<callback> }
+        pageRefreshers: {},          // { pageName: refreshFn }
+        sseConnected: false,
+        _reconnectTimer: null,
+        _reconnectDelay: 1000,       // backoff state, reset on successful connect
 
         async init() {
             // Check auth status
@@ -24,6 +39,7 @@ document.addEventListener('alpine:init', () => {
                     const settings = await api.getSettings();
                     this.darkMode = settings.dark_mode;
                     this.applyTheme();
+                    this.initEvents();
                 }
             } catch (error) {
                 console.error('Init error:', error);
@@ -74,6 +90,58 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        initEvents() {
+            if (this.eventSource) return;
+            const es = new EventSource('/api/events/');
+            es.addEventListener('connected', () => {
+                this.sseConnected = true;
+                this._reconnectDelay = 1000;  // reset backoff on successful connect
+            });
+            ['runs.changed', 'scripts.changed', 'categories.changed', 'settings.changed'].forEach(type => {
+                es.addEventListener(type, () => this._fireSubscribers(type));
+            });
+            es.onerror = () => {
+                this.sseConnected = false;
+                this._scheduleReconnect();
+            };
+            this.eventSource = es;
+        },
+
+        subscribeEvents(eventType, callback) {
+            if (!this.eventSubscribers[eventType]) {
+                this.eventSubscribers[eventType] = new Set();
+            }
+            this.eventSubscribers[eventType].add(callback);
+            return () => this.eventSubscribers[eventType]?.delete(callback);
+        },
+
+        registerRefresher(pageName, refreshFn) {
+            this.pageRefreshers[pageName] = refreshFn;
+        },
+
+        async refreshCurrentPage() {
+            const fn = this.pageRefreshers[this.currentPage];
+            if (fn) await fn();
+        },
+
+        _fireSubscribers(eventType) {
+            const subs = this.eventSubscribers[eventType];
+            if (subs) subs.forEach(cb => cb());
+        },
+
+        _scheduleReconnect() {
+            if (this._reconnectTimer) return;
+            if (this.eventSource) {
+                this.eventSource.close();
+                this.eventSource = null;
+            }
+            this._reconnectTimer = setTimeout(() => {
+                this._reconnectTimer = null;
+                this._reconnectDelay = Math.min(this._reconnectDelay * 2, 30000);
+                this.initEvents();
+            }, this._reconnectDelay);
+        },
+
         async logout() {
             await api.logout();
             this.authenticated = false;
@@ -94,6 +162,7 @@ document.addEventListener('alpine:init', () => {
                 await api.login(this.password);
                 Alpine.store('app').authenticated = true;
                 Alpine.store('app').init();
+                Alpine.store('app').initEvents();
             } catch (e) {
                 this.error = 'Invalid password';
             }
