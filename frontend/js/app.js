@@ -54,6 +54,26 @@ document.addEventListener('alpine:init', () => {
             }, 4000);
         },
 
+        async cancelRun(scriptId, runId, scriptName) {
+            if (!confirm(`Cancel "${scriptName}"? The script will be terminated.`)) {
+                return false;
+            }
+            try {
+                await api.killScript(scriptId, runId);
+                this.showToast(`Cancelled ${scriptName}`, 'success');
+                return true;
+            } catch (e) {
+                if (e.status === 404) {
+                    // Race: process finished a moment before the kill arrived.
+                    // Per spec, treat as success with a neutral info toast.
+                    this.showToast('Run already finished', 'info');
+                    return true;
+                }
+                this.showToast(e.message || 'Failed to cancel run', 'error');
+                return false;
+            }
+        },
+
         async logout() {
             await api.logout();
             this.authenticated = false;
