@@ -373,7 +373,16 @@
                                                 <td x-text="script.last_run_at ? new Date(script.last_run_at).toLocaleString() : '-'"></td>
                                                 <td>
                                                     <div class="flex gap-2">
-                                                        <button class="btn btn-sm btn-success" @click="runScript(script)" :disabled="script.is_running">Run</button>
+                                                        <template x-if="!script.is_running">
+                                                            <button class="btn btn-sm btn-success" @click="runScript(script)">Run</button>
+                                                        </template>
+                                                        <template x-if="script.is_running">
+                                                            <button class="btn btn-sm btn-danger"
+                                                                    @click="cancelRun(script)"
+                                                                    :disabled="cancelling.includes(script.id)">
+                                                                Cancel
+                                                            </button>
+                                                        </template>
                                                         <button class="btn btn-sm btn-secondary" @click="toggleExpand(script)">
                                                             Details
                                                         </button>
