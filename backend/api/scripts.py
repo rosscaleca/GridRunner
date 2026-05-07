@@ -19,15 +19,16 @@ from .auth import require_auth
 router = APIRouter()
 
 
-def find_running_run(runs, running_processes):
+def find_running_run(runs, tracked_processes):
     """Return the Run currently tracked as a live process, or None.
 
     A run counts as 'running' only if both its status field is 'running' AND its id
-    is present in the in-memory running_processes dict (which the executor populates
-    while a subprocess is alive). This avoids treating crashed-server orphans as live.
+    is present in the passed-in tracked_processes mapping (the executor populates its
+    module-level `running_processes` dict while a subprocess is alive). This avoids
+    treating crashed-server orphans as live.
     """
     for run in runs:
-        if run.status == "running" and run.id in running_processes:
+        if run.status == "running" and run.id in tracked_processes:
             return run
     return None
 
