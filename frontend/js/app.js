@@ -93,9 +93,15 @@ document.addEventListener('alpine:init', () => {
         initEvents() {
             if (this.eventSource) return;
             const es = new EventSource('/api/events/');
+            // onopen fires when the network connection is established; the
+            // canonical "we're back" signal — reset backoff here rather than on
+            // the server-sent 'connected' frame so backoff doesn't creep up
+            // under flapping reconnects.
+            es.onopen = () => {
+                this._reconnectDelay = 1000;
+            };
             es.addEventListener('connected', () => {
                 this.sseConnected = true;
-                this._reconnectDelay = 1000;  // reset backoff on successful connect
             });
             ['runs.changed', 'scripts.changed', 'categories.changed', 'settings.changed'].forEach(type => {
                 es.addEventListener(type, () => this._fireSubscribers(type));
@@ -111,8 +117,11 @@ document.addEventListener('alpine:init', () => {
             if (!this.eventSubscribers[eventType]) {
                 this.eventSubscribers[eventType] = new Set();
             }
-            this.eventSubscribers[eventType].add(callback);
-            return () => this.eventSubscribers[eventType]?.delete(callback);
+            // Capture the Set by reference so a future teardown that replaces
+            // eventSubscribers[eventType] doesn't strand this unsubscribe call.
+            const subs = this.eventSubscribers[eventType];
+            subs.add(callback);
+            return () => subs.delete(callback);
         },
 
         registerRefresher(pageName, refreshFn) {
