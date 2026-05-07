@@ -22,8 +22,8 @@ async def stream_events(
 
     Frame format: `event: <type>\\ndata: {}\\n\\n` where <type> is one of
     runs.changed, scripts.changed, categories.changed, settings.changed,
-    plus an initial 'connected' frame and a 'ping' frame every 30s of
-    silence to keep the connection alive.
+    plus an initial 'connected' frame. Connection keepalive (a periodic
+    comment frame) is handled by sse-starlette's built-in ping (default 15s).
     """
     async def event_generator() -> AsyncGenerator[dict, None]:
         queue: asyncio.Queue = asyncio.Queue(maxsize=100)
@@ -33,11 +33,8 @@ async def stream_events(
             while True:
                 if await request.is_disconnected():
                     return
-                try:
-                    event_type = await asyncio.wait_for(queue.get(), timeout=30)
-                    yield {"event": event_type, "data": "{}"}
-                except asyncio.TimeoutError:
-                    yield {"event": "ping", "data": "{}"}
+                event_type = await queue.get()
+                yield {"event": event_type, "data": "{}"}
         finally:
             events.remove_subscriber(queue)
 
