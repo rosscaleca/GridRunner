@@ -130,6 +130,7 @@ document.addEventListener('alpine:init', () => {
         recent: [],
         upcoming: [],
         failures: [],
+        cancelling: [],
         loading: true,
 
         async init() {
@@ -164,6 +165,18 @@ document.addEventListener('alpine:init', () => {
                 console.error('Dashboard refresh error:', e);
             }
             this.loading = false;
+        },
+
+        async cancelRun(run) {
+            this.cancelling.push(run.run_id);
+            try {
+                const ok = await Alpine.store('app').cancelRun(
+                    run.script_id, run.run_id, run.script_name
+                );
+                if (ok) await this.refresh();
+            } finally {
+                this.cancelling = this.cancelling.filter(id => id !== run.run_id);
+            }
         },
 
         formatDuration(seconds) {
