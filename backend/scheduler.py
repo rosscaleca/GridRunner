@@ -12,6 +12,7 @@ from apscheduler.jobstores.memory import MemoryJobStore
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from . import events
 from .database import async_session
 from .logging_config import get_logger
 from .models import Schedule, Script
@@ -204,6 +205,9 @@ async def run_scheduled_script(script_id: int, schedule_id: int) -> None:
             if job:
                 schedule.next_run = job.next_run_time
                 await session.commit()
+                # Notify the scripts page so the expanded-schedule "Next: <time>"
+                # tick reflects the post-fire state.
+                events.emit("scripts.changed")
 
 
 async def get_upcoming_runs(limit: int = 10) -> list:
