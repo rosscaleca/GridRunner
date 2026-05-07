@@ -257,6 +257,7 @@ async def _run_script_process(script_id: int, run_id: int) -> None:
                     run.ended_at = get_local_now()
                     run.duration = 0
                     await session.commit()
+                    events.emit("runs.changed")
                     return
 
                 # Create subprocess
