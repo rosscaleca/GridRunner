@@ -19,6 +19,19 @@ from .auth import require_auth
 router = APIRouter()
 
 
+def find_running_run(runs, running_processes):
+    """Return the Run currently tracked as a live process, or None.
+
+    A run counts as 'running' only if both its status field is 'running' AND its id
+    is present in the in-memory running_processes dict (which the executor populates
+    while a subprocess is alive). This avoids treating crashed-server orphans as live.
+    """
+    for run in runs:
+        if run.status == "running" and run.id in running_processes:
+            return run
+    return None
+
+
 class ScriptCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -65,6 +78,7 @@ class ScriptResponse(BaseModel):
     updated_at: datetime
     health_score: float = 100.0
     is_running: bool = False
+    running_run_id: Optional[int] = None
     last_run_status: Optional[str] = None
     last_run_at: Optional[datetime] = None
 
@@ -127,10 +141,10 @@ async def list_scripts(
         if script.runs:
             last_run = max(script.runs, key=lambda r: r.started_at)
 
-        # Check if running
-        is_running = any(
-            r.id in running_processes for r in script.runs if r.status == "running"
-        )
+        # Derive running state via the helper
+        running_run = find_running_run(script.runs, running_processes)
+        is_running = running_run is not None
+        running_run_id = running_run.id if running_run else None
 
         responses.append(ScriptResponse(
             id=script.id,
@@ -155,6 +169,7 @@ async def list_scripts(
             updated_at=script.updated_at,
             health_score=script.health_score,
             is_running=is_running,
+            running_run_id=running_run_id,
             last_run_status=last_run.status if last_run else None,
             last_run_at=last_run.started_at if last_run else None,
         ))
@@ -231,6 +246,10 @@ async def get_script(
     if script.runs:
         last_run = max(script.runs, key=lambda r: r.started_at)
 
+    running_run = find_running_run(script.runs, running_processes)
+    is_running = running_run is not None
+    running_run_id = running_run.id if running_run else None
+
     return ScriptResponse(
         id=script.id,
         name=script.name,
@@ -253,6 +272,8 @@ async def get_script(
         created_at=script.created_at,
         updated_at=script.updated_at,
         health_score=script.health_score,
+        is_running=is_running,
+        running_run_id=running_run_id,
         last_run_status=last_run.status if last_run else None,
         last_run_at=last_run.started_at if last_run else None,
     )
