@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [main]
 
+# Default to read-only for all jobs; the release job opts in to contents:write below.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -93,7 +97,9 @@ jobs:
         run: find artifacts -name '*.zip' -exec mv {} . \;
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        # Pinned to v2.x SHA to mitigate supply-chain risk on the only third-party action.
+        # Bump the SHA when intentionally moving to a newer release.
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
           files: "*.zip"
           generate_release_notes: true
